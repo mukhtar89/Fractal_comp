@@ -13,6 +13,9 @@
 #include "fenc.h"
 #include "fdec.h"
 
+#define IMAGE "lena256.BMP"
+#define FILE "lena256.frct"
+
 using namespace std;
 using namespace cv;
 
@@ -26,7 +29,7 @@ __global__ void addKernel(int *c, const int *a, const int *b)
 
 int main()
 {
-	Mat img = imread("lena128.BMP", CV_LOAD_IMAGE_UNCHANGED);
+	Mat img = imread(IMAGE, CV_LOAD_IMAGE_UNCHANGED);
 	if (img.data == NULL)
 	{
 		cout << "Image cannot be loaded..!!" << endl;
@@ -74,7 +77,7 @@ int main()
 	fenc(g, Tg, rsize, nd, nr, sv, sh);
 
 	ofstream fout;
-	fout.open("lena128.frct");
+	fout.open(FILE);
 	k = nr*nr * 5;
 	for (int i = 0; i < k; i++)
 		fout << Tr[i] << " "; //writing ith character of array in the file
@@ -98,7 +101,7 @@ int main()
 	g1 = (int*)malloc(img.total()*sizeof(int));
 
 	ifstream fin;
-	fin.open("lena128.frct");
+	fin.open(FILE);
 	string line;
 	int value;
 
