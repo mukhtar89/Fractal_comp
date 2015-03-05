@@ -1,7 +1,3 @@
-
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-
 #include <stdio.h>
 #include "opencv2/highgui/highgui.hpp"
 #include <iostream>
@@ -9,6 +5,11 @@
 #include <fstream>
 #include <malloc.h>
 #include <assert.h>
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+#include <cuda.h>
+#include <device_functions.h>
+#include <cuda_runtime_api.h>
 
 #include "fenc.h"
 #include "fdec.h"
@@ -19,16 +20,18 @@
 using namespace std;
 using namespace cv;
 
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
-
-__global__ void addKernel(int *c, const int *a, const int *b)
-{
-    int i = threadIdx.x;
-    c[i] = a[i] + b[i];
-}
-
 int main()
 {
+	cudaError_t cudaStatus;
+	// Choose which GPU to run on, change this on a multi-GPU system.
+	cudaStatus = cudaSetDevice(0);
+	if (cudaStatus != cudaSuccess) 
+	{
+		fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
+		_getch();
+		return -1;
+	}
+	
 	Mat img = imread(IMAGE, CV_LOAD_IMAGE_UNCHANGED);
 	if (img.data == NULL)
 	{
@@ -72,9 +75,19 @@ int main()
 	Tb = (int*)malloc(nr*nr * 5 * sizeof(int));
 	Tg = (int*)malloc(nr*nr * 5 * sizeof(int));
 
-	fenc(r, Tr, rsize, nd, nr, sv, sh);
-	fenc(b, Tb, rsize, nd, nr, sv, sh);
-	fenc(g, Tg, rsize, nd, nr, sv, sh);
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaDeviceSynchronize();
+	cudaEventRecord(start, 0);
+
+	cudaStatus = cuda_encoder(r, b, g, Tr, Tb, Tg, rsize, nd, nr, sv, sh);
+
+	cudaEventSynchronize(stop);
+	float elapsedTime;
+	cudaEventElapsedTime(&elapsedTime, stop, start);
+
+	cout << "\nEncoding time: " << elapsedTime << " milliseconds\n";
 
 	ofstream fout;
 	fout.open(FILE);
@@ -83,10 +96,10 @@ int main()
 		fout << Tr[i] << " "; //writing ith character of array in the file
 	fout << "\n";
 	for (int i = 0; i < k; i++)
-		fout << Tb[i] << " "; //writing ith character of array in the file
+		fout << Tg[i] << " "; //writing ith character of array in the file
 	fout << "\n";
 	for (int i = 0; i < k; i++)
-		fout << Tg[i] << " "; //writing ith character of array in the file
+		fout << Tb[i] << " "; //writing ith character of array in the file
 	fout << "\n";
 
 	fout.close();
@@ -121,7 +134,7 @@ int main()
 		std::istringstream iss(line);
 		while (iss >> value)
 		{
-			Tb1[k] = value;
+			Tg1[k] = value;
 			k++;
 		}
 	}
@@ -131,23 +144,29 @@ int main()
 		std::istringstream iss(line);
 		while (iss >> value)
 		{
-			Tg1[k] = value;
+			Tb1[k] = value;
 			k++;
 		}
 	}
 
-	fdec(r1, Tr1, rsize, nd, nr, sv, sh);
-	fdec(b1, Tb1, rsize, nd, nr, sv, sh);
-	fdec(g1, Tg1, rsize, nd, nr, sv, sh);
+	cudaDeviceSynchronize();
+	cudaEventRecord(start, 0);
+
+	cudaStatus = cuda_decoder(r1, b1, g1, Tr1, Tb1, Tg1, rsize, nd, nr, sv, sh);
+
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&elapsedTime, start, stop);
+
+	cout << "\nDecoding time: " << elapsedTime << " milliseconds\n";
 
 	Mat A(img.rows, img.cols, CV_8UC3, Scalar(0, 0, 0));
 
 	k = 0;
 	for (int i = 0; i<A.rows; i++){
 		for (int j = 0; j<A.cols; j++){
+			A.data[A.channels()*(A.cols*i + j) + 2] = r1[k]; 
+			A.data[A.channels()*(A.cols*i + j) + 1] = g1[k]; 
 			A.data[A.channels()*(A.cols*i + j) + 0] = b1[k];
-			A.data[A.channels()*(A.cols*i + j) + 1] = g1[k];
-			A.data[A.channels()*(A.cols*i + j) + 2] = r1[k];
 			k++;
 		}
 	}
@@ -168,7 +187,7 @@ int main()
 
     // cudaDeviceReset must be called before exiting in order for profiling and
     // tracing tools such as Nsight and Visual Profiler to show complete traces.
-	cudaError_t cudaStatus = cudaDeviceReset();
+	cudaStatus = cudaDeviceReset();
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "cudaDeviceReset failed!");
         return 1;
@@ -189,84 +208,4 @@ int main()
 	free(Tg);
 
 	return 0;
-}
-
-// Helper function for using CUDA to add vectors in parallel.
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size)
-{
-    int *dev_a = 0;
-    int *dev_b = 0;
-    int *dev_c = 0;
-    cudaError_t cudaStatus;
-
-    // Choose which GPU to run on, change this on a multi-GPU system.
-    cudaStatus = cudaSetDevice(0);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
-        goto Error;
-    }
-
-    // Allocate GPU buffers for three vectors (two input, one output)    .
-    cudaStatus = cudaMalloc((void**)&dev_c, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMalloc((void**)&dev_a, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMalloc((void**)&dev_b, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    // Copy input vectors from host memory to GPU buffers.
-    cudaStatus = cudaMemcpy(dev_a, a, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMemcpy(dev_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
-
-    // Launch a kernel on the GPU with one thread for each element.
-    addKernel<<<1, size>>>(dev_c, dev_a, dev_b);
-
-    // Check for any errors launching the kernel
-    cudaStatus = cudaGetLastError();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-        goto Error;
-    }
-    
-    // cudaDeviceSynchronize waits for the kernel to finish, and returns
-    // any errors encountered during the launch.
-    cudaStatus = cudaDeviceSynchronize();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-        goto Error;
-    }
-
-    // Copy output vector from GPU buffer to host memory.
-    cudaStatus = cudaMemcpy(c, dev_c, size * sizeof(int), cudaMemcpyDeviceToHost);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
-
-Error:
-    cudaFree(dev_c);
-    cudaFree(dev_a);
-    cudaFree(dev_b);
-    
-    return cudaStatus;
 }

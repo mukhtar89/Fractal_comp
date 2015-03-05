@@ -242,8 +242,6 @@ c:\program files\nvidia gpu computing toolkit\cuda\v6.5\include\host_defines.h
 c:\program files\nvidia gpu computing toolkit\cuda\v6.5\include\vector_functions.h
 c:\program files\nvidia gpu computing toolkit\cuda\v6.5\include\device_launch_parameters.h
 c:\program files\nvidia gpu computing toolkit\cuda\v6.5\include\vector_types.h
-C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\cuda_runtime.h
-C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\device_launch_parameters.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\stdio.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\crtdefs.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\swprintf.inl
@@ -345,5 +343,14 @@ C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\crtdefs.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\fstream
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\assert.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\crtdefs.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\cuda_runtime.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\device_launch_parameters.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\cuda.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\device_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\cuda_runtime_api.h
 f:\academics\ucirvinegd\qtr2\eecs 221 - high performance computing\project\fractal_comp\fractal_comp\fenc.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\cuda_runtime.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\device_launch_parameters.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\device_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\cuda_runtime_api.h
 f:\academics\ucirvinegd\qtr2\eecs 221 - high performance computing\project\fractal_comp\fractal_comp\fdec.h
